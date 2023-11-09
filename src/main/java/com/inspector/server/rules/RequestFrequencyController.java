@@ -3,6 +3,9 @@ package com.inspector.server.rules;
 import java.util.HashMap;
 import java.util.Map;
 
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+
 public class RequestFrequencyController {
 	
 	int MAXIMUM_ALLOWED_FREQUENCY = 10;
@@ -11,21 +14,19 @@ public class RequestFrequencyController {
 	
 	public boolean validateRequest(String requestOrigin) {
 		// TODO Implement logic to validate request frequency
-		
-		// check if requestOrigin exists in the REQUEST_COUNTER map
-		if(REQUEST_COUNTER.get(requestOrigin)==null) {
-			REQUEST_COUNTER.put(requestOrigin, 1); // if not exists, initialize with 0
+		JedisPool pool = new JedisPool("localhost", 6379);
+		Jedis jedis = pool.getResource();
+		//check if request origin exists in the redis server
+		if (jedis.exists(requestOrigin)) {
+			jedis.incr(requestOrigin);
 		}else {
-			REQUEST_COUNTER.replace(requestOrigin, REQUEST_COUNTER.get(requestOrigin)+1); // if exists, increment the counter by 1
+			jedis.set(requestOrigin,"1");
 		}
-		
-		// check if the counter value is <= MAXIMUM_ALLOWED_FREQUENCY
-		if(REQUEST_COUNTER.get(requestOrigin)<=MAXIMUM_ALLOWED_FREQUENCY) {
-			return true; // if in the limits, return true. Otherwise, false.
-		}
-		return false;
-		
-	
-
+		 int currentfrequency=Integer.parseInt(jedis.get(requestOrigin));
+		 if(currentfrequency<=MAXIMUM_ALLOWED_FREQUENCY) {
+			 return true;
+		 }
+		 return false;
+				
 	}
 }
